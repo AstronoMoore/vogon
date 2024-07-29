@@ -109,7 +109,6 @@ def get_TNS_api_key():
     try:
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
-        print(config)
 
         if 'TNS_API_KEY' in config['API']:
             key = config['API']['TNS_API_KEY']
@@ -127,7 +126,6 @@ def get_atlas_login_keys():
     try:
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
-        print(config)
         if 'ATLAS' in config:
             username = config['ATLAS']['ATLAS_USERNAME']
             password = config['ATLAS']['ATLAS_PASS']
@@ -515,7 +513,7 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
-def search(tnsname):
+def marvin(tnsname):
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
 
@@ -524,11 +522,11 @@ def search(tnsname):
     if 'Gaia' in surveys: 
         The_Book.append(fetch_gaia(surveys['Gaia']))
     
-    # if 'ZTF' in surveys: 
-    #     The_Book.append(fetch_ztf(surveys['ZTF']))
+    if 'ZTF' in surveys: 
+        The_Book.append(fetch_ztf(surveys['ZTF']))
 
-    # if 'ZTF' not in surveys:
-    #     The_Book.append(fetch_ztf_cone(TNS_info['radeg'][0],TNS_info['decdeg'][0],0.15))
+    if 'ZTF' not in surveys:
+        The_Book.append(fetch_ztf_cone(TNS_info['radeg'][0],TNS_info['decdeg'][0],0.15))
 
     The_Book.append(fetch_atlas(TNS_info['radeg'][0],TNS_info['decdeg'][0],tnsname))
 
