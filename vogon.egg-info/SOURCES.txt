@@ -1,9 +1,7 @@
 .DS_Store
 .gitattributes
 README.md
-__init__.py
 setup.py
-vogon.py
 .eggs/README.txt
 .eggs/setuptools_scm-8.1.0-py3.11.egg/EGG-INFO/LICENSE
 .eggs/setuptools_scm-8.1.0-py3.11.egg/EGG-INFO/PKG-INFO
@@ -65,8 +63,12 @@ vogon.py
 .eggs/setuptools_scm-8.1.0-py3.11.egg/setuptools_scm/_integration/__pycache__/pyproject_reading.cpython-311.pyc
 .eggs/setuptools_scm-8.1.0-py3.11.egg/setuptools_scm/_integration/__pycache__/setuptools.cpython-311.pyc
 .eggs/setuptools_scm-8.1.0-py3.11.egg/setuptools_scm/_integration/__pycache__/toml.cpython-311.pyc
-dist/vogon-0.1.dev2+g7484b97.d20240729-py3-none-any.whl
-dist/vogon-0.1.dev2+g7484b97.d20240729.tar.gz
+.github/workflows/python-publish.yml
+dist/vogon-0.1.0-py3-none-any.whl
+dist/vogon-0.1.0.tar.gz
+vogon/__init__.py
+vogon/config.py
+vogon/vogon.py
 vogon.egg-info/PKG-INFO
 vogon.egg-info/SOURCES.txt
 vogon.egg-info/dependency_links.txt

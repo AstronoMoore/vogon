@@ -5,3 +5,7 @@ Summary: A basic data aggregator for astrophysical transients
 Author: Thomas Moore
 Author-email: tom.moore017@gmail.com
 Requires-Python: >=3.7
+Requires-Dist: pandas
+Requires-Dist: astropy
+Requires-Dist: requests
+Requires-Dist: lasair

@@ -22,15 +22,95 @@ import io
 from collections import OrderedDict
 import configparser
 from astropy.time import Time
+import os
+import pkg_resources
+from vogon.config import get_settings_file_path
+from vogon.config import set_setting_filepath
 
+
+def create_settings_template():
+    template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
+    
+    with open(template_path, 'r') as template_file:
+        template_content = template_file.read()
+    
+    settings_path = get_settings_file_path()
+    with open(settings_path, 'w') as output_file:
+        output_file.write(template_content)
+    
+    print(f'Template settings.ini created at {settings_path}')
+
+def ensure_settings():
+    settings_path = get_settings_file_path()
+    if not os.path.exists(settings_path):
+        print("Settings file not found.")
+        create_settings_template()
+
+
+def check_output_dir():
+    # Create a ConfigParser object
+    config = configparser.ConfigParser()
+
+    # Read the configuration file
+    config.read(get_settings_file_path())
+
+    # Check if [output] section exists
+    if 'output' not in config:
+        print("The [output] section is missing from the configuration file.")
+        return
+
+    # Check if OUTPUT_DIR is defined
+    output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
+
+    # If OUTPUT_DIR is not defined, prompt the user for input
+    if not output_dir:
+        print("The OUTPUT_DIR is not defined in the configuration file.")
+        new_dir = input("Please enter the directory path to set for OUTPUT_DIR: ").strip()
+
+        # Expand ~ to the full home directory path
+        new_dir = os.path.expanduser(new_dir)
+
+        # Validate the user input (simple check to ensure the path is not empty)
+        if not new_dir:
+            print("The directory path cannot be empty.")
+            return
+
+        # Set the new output directory
+        output_dir = new_dir
+
+    # Expand ~ to the full home directory path
+    output_dir = os.path.expanduser(output_dir)
+
+    # Check if the specified directory exists, and create it if it does not
+    if not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+            print(f"Created directory: {output_dir}")
+        except OSError as e:
+            print(f"Failed to create directory: {e}")
+            return
+
+    # Update the OUTPUT_DIR in the configuration file if it was newly set
+    if 'OUTPUT_DIR' not in config['output'] or config.get('output', 'OUTPUT_DIR') != output_dir:
+        config.set('output', 'OUTPUT_DIR', output_dir)
+        try:
+            # Write the updated configuration back to the file
+            with open(get_settings_file_path(), 'w') as configfile:
+                config.write(configfile)
+            print(f"Updated OUTPUT_DIR to {output_dir} in {get_settings_file_path()}")
+        except OSError as e:
+            print(f"Failed to write to the configuration file: {e}")
 
 
 TNS_API_URL = 'https://www.wis-tns.org/api/get/object'
 
 def get_TNS_api_key():
+    ensure_settings()
     try:
         config = configparser.ConfigParser()
-        config.read('settings.ini')
+        config.read(get_settings_file_path())
+        print(config)
+
         if 'TNS_API_KEY' in config['API']:
             key = config['API']['TNS_API_KEY']
             return key
@@ -43,27 +123,30 @@ def get_TNS_api_key():
     
 
 def get_atlas_login_keys():
+    ensure_settings()
     try:
         config = configparser.ConfigParser()
-        config.read('settings.ini')
+        config.read(get_settings_file_path())
+        print(config)
         if 'ATLAS' in config:
             username = config['ATLAS']['ATLAS_USERNAME']
             password = config['ATLAS']['ATLAS_PASS']
             return username, password
         else:
-            print("Error: ATLAS not found in settings.ini")
+            print("Error: ATLAS not found in settings.ini. Please check that ATLAS login details are supplied")
             return None
-    except FileNotFoundError:
-        print("Error: settings.ini file not found")
+    except Exception as e:
+        print(e)
         return None
 
 
 def get_LASAIR_TOKEN():
+    ensure_settings()
     """
     # fetching the token from the settings.ini file
     """
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read(get_settings_file_path())
     return config['API']['LASAIR_TOKEN']
 
 def tns_lookup(tnsname):
@@ -84,7 +167,14 @@ def tns_lookup(tnsname):
                 "spectra": "1"
             })
         }
-        response = requests.post(TNS_API_URL, data=data, headers={'User-Agent': 'tns_marker{"tns_id":104739,"type": "bot", "name":"Name and Redshift Retriever"}'})
+        # configuring TNS bot query
+        config = configparser.ConfigParser()
+        config.read(get_settings_file_path())
+        tns_id = config['TNS_API']['tns_id']
+        bot_type = config['TNS_API']['bot_type']
+        name = config['TNS_API']['name']
+        tns_agent = f'tns_marker{{"tns_id":{tns_id},"type": "{bot_type}", "name":"{name}"}}'
+        response = requests.post(TNS_API_URL, data=data, headers={'User-Agent': tns_agent})
         response.raise_for_status()  # Raise an exception
         json_data = response.json()
         object_TNS_data = json_data['data']['reply']
@@ -93,18 +183,6 @@ def tns_lookup(tnsname):
     except Exception as e:
         print(f"fetching TNS info caused an error: {e}")
         return None
-
-def fetch_atlas():
-    atlasurl = 'https://fallingstar-data.com/forcedphot'
-    response = requests.post(url=f"{atlasurl}/api-token-auth/",data={'username':username,'password':password})
-    if response.status_code == 200:
-        token = response.json()['token']
-        print(f'Token: {token}')
-        headers = {'Authorization':f'Token {token}','Accept':'application/json'}
-    else:
-        raise RuntimeError(f'ERROR in connect_atlas(): {response.status_code}')
-        print(resp.json())
-    return headers
 
 def fetch_ztf(ztf_name):
     L = lasair(get_LASAIR_TOKEN(), endpoint = "https://lasair-ztf.lsst.ac.uk/api")
@@ -261,23 +339,6 @@ def fetch_neowise(ra, dec):
     neowise = neowise.rename(columns={"mjd": "time"}).dropna()
     return neowise
 
-
-def get_atlas_login_keys():
-    try:
-        config = configparser.ConfigParser()
-        config.read('settings.ini')
-        if 'ATLAS' in config:
-            username = config['ATLAS']['ATLAS_USERNAME']
-            password = config['ATLAS']['ATLAS_PASS']
-            return username, password
-        else:
-            print("Error: ATLAS not found in settings.ini")
-            return None
-    except FileNotFoundError:
-        print("Error: settings.ini file not found")
-        return None
-    
-
 def connect_atlas():
 
     ATLAS_USERNAME, ATLAS_PASS = get_atlas_login_keys()
@@ -302,6 +363,21 @@ def connect_atlas():
             raise RuntimeError(f'ERROR in connect_atlas(): {response.status_code}')
 
 def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fetched, cleaned):
+
+    check_output_dir()
+    config = configparser.ConfigParser()
+    config.read(get_settings_file_path())
+    # Check if OUTPUT_DIR is defined
+    output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
+
+    # check if ATLAS ledger exists 
+    if not os.path.exists(output_dir + '/atlas_task_list.json'):
+        # Create an empty file
+        with open(output_dir + '/atlas_task_list.json', 'w') as file:
+            pass  # This will create an empty file
+
+
+
     task_data = {
         'name': name,
         'task_url': task_url,
@@ -314,10 +390,13 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
     # Load existing tasks from the file
     existing_tasks = []
     try:
-        with open('atlas_task_list.json', 'r') as file:
+        with open(output_dir + '/atlas_task_list.json', 'r') as file:
             existing_tasks = [json.loads(line) for line in file]
     except FileNotFoundError:
+        print('need to make an atlas tast list ledger')
         pass
+
+
     # Check if task with the same name exists
     task_exists = False
     for idx, task in enumerate(existing_tasks):
@@ -331,7 +410,7 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
     existing_tasks.append(task_data)
     
     # Write updated task list back to file
-    with open('atlas_task_list.json', 'w') as file:
+    with open(output_dir + '/atlas_task_list.json', 'w') as file:
         for task in existing_tasks:
             json.dump(task, file)
             file.write('\n')
@@ -436,7 +515,7 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
-def marvin(tnsname):
+def search(tnsname):
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
 
@@ -445,11 +524,11 @@ def marvin(tnsname):
     if 'Gaia' in surveys: 
         The_Book.append(fetch_gaia(surveys['Gaia']))
     
-    if 'ZTF' in surveys: 
-        The_Book.append(fetch_ztf(surveys['ZTF']))
+    # if 'ZTF' in surveys: 
+    #     The_Book.append(fetch_ztf(surveys['ZTF']))
 
-    if 'ZTF' not in surveys:
-        The_Book.append(fetch_ztf_cone(TNS_info['radeg'][0],TNS_info['decdeg'][0],0.15))
+    # if 'ZTF' not in surveys:
+    #     The_Book.append(fetch_ztf_cone(TNS_info['radeg'][0],TNS_info['decdeg'][0],0.15))
 
     The_Book.append(fetch_atlas(TNS_info['radeg'][0],TNS_info['decdeg'][0],tnsname))
 
@@ -460,4 +539,5 @@ def marvin(tnsname):
     return combined_data
 
 if __name__ == "__main__":
+    ensure_settings()
     print('Done')
