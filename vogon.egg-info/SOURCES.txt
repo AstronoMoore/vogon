@@ -1,0 +1,10 @@
+.gitattributes
+README.md
+__init__.py
+setup.py
+vogon.py
+vogon.egg-info/PKG-INFO
+vogon.egg-info/SOURCES.txt
+vogon.egg-info/dependency_links.txt
+vogon.egg-info/requires.txt
+vogon.egg-info/top_level.txt
