@@ -1,5 +1,6 @@
 .DS_Store
 .gitattributes
+License.txt
 README.md
 setup.cfg
 setup.py
