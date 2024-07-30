@@ -16,5 +16,17 @@ Import the library and call the `search` function with your desired query. For i
 ```python
 from vogon import vogon
 
-data vogon.search('2023ixf')
+data = vogon.search('2023ixf')
+```
+
+
+## Example TNS Lookup
+
+```python
+from vogon import vogon
+
+tns_info = vogon.tns_lookup('2023ixf')
+
+redshift = tns_info['redshift']
+discoverer = tns_info['discoverer']
 ```
