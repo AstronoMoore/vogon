@@ -533,7 +533,7 @@ def fetch_atlas(ra,dec,name, alltime):
             pass
 
         if retry < retries - 1:
-            time.sleep(60)  # Add a custom sdelay between retries
+            time.sleep(30)  # Add a custom sdelay between retries in the settings.ini
 
     return ATLAS_data
 
@@ -599,7 +599,7 @@ def search(tnsname):
         mjd_min = tns_discovery_date - 50 
         mjd_max = Time.now().mjd + 500
 
-        combined_data  = combined_data[(combined_data['mjd'] > mjd_min) & (combined_data['mjd'] < mjd_max)]
+        combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
 
     return combined_data
 

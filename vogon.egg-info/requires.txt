@@ -2,3 +2,5 @@ pandas
 astropy
 requests
 lasair
+tqdm
+matplotlib

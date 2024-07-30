@@ -137,6 +137,9 @@ vogon.egg-info/dependency_links.txt
 vogon.egg-info/requires.txt
 vogon.egg-info/top_level.txt
 vogon/__pycache__/__init__.cpython-311.pyc
+vogon/__pycache__/__init__.cpython-312.pyc
 vogon/__pycache__/config.cpython-311.pyc
+vogon/__pycache__/config.cpython-312.pyc
 vogon/__pycache__/vogon.cpython-311.pyc
+vogon/__pycache__/vogon.cpython-312.pyc
 vogon/templates/settings_template.ini

@@ -26,7 +26,7 @@ import os
 import pkg_resources
 from vogon.config import get_settings_file_path
 from vogon.config import set_setting_filepath
-
+from tqdm import tqdm
 
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
@@ -110,8 +110,8 @@ def get_TNS_api_key():
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
 
-        if 'TNS_API_KEY' in config['API']:
-            key = config['API']['TNS_API_KEY']
+        if 'TNS_API_KEY' in config['API_TOKENS']:
+            key = config['API_TOKENS']['TNS_API_KEY']
             return key
         else:
             print("Error: TNS API key not found in settings.ini")
@@ -126,14 +126,15 @@ def get_atlas_login_keys():
     try:
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
-        if 'ATLAS' in config:
-            username = config['ATLAS']['ATLAS_USERNAME']
-            password = config['ATLAS']['ATLAS_PASS']
+        if 'ATLAS_FP_SERVER' in config:
+            username = config['ATLAS_FP_SERVER']['ATLAS_USERNAME']
+            password = config['ATLAS_FP_SERVER']['ATLAS_PASS']
             return username, password
         else:
             print("Error: ATLAS not found in settings.ini. Please check that ATLAS login details are supplied")
             return None
     except Exception as e:
+        print('There was a problem with the ATLAS login keys')
         print(e)
         return None
 
@@ -145,17 +146,31 @@ def get_LASAIR_TOKEN():
     """
     config = configparser.ConfigParser()
     config.read(get_settings_file_path())
-    return config['API']['LASAIR_TOKEN']
+    return config['API_TOKENS']['LASAIR_TOKEN']
 
-def tns_lookup(tnsname):
+def tns_lookup(tnsname: str) -> dict:
     """
-    Lookup TNS information for the given object name.
+    Lookup TNS information for the given object name and cache the result.
     """
     try:
+        # Load API key
+        api_key = get_TNS_api_key()
+        if not api_key:
+            print("API key is missing")
+            return None
+
+        # Load configuration
+        config = configparser.ConfigParser()
+        config.read(get_settings_file_path())
         try:
-            api_key = get_TNS_api_key()
-        except Exception as e:
-            print(f"Error reading TNS API key: {e}")
+            tns_id = config['TNS_API']['tns_id']
+            type = config['TNS_API']['account_type']
+            name = config['TNS_API']['name']
+        except KeyError as e:
+            print(f"Missing configuration key: {e}")
+            return None
+
+        # Set up request
         data = {
             'api_key': api_key,
             'data': json.dumps({
@@ -165,21 +180,54 @@ def tns_lookup(tnsname):
                 "spectra": "1"
             })
         }
-        # configuring TNS bot query
-        config = configparser.ConfigParser()
-        config.read(get_settings_file_path())
-        tns_id = config['TNS_API']['tns_id']
-        bot_type = config['TNS_API']['bot_type']
-        name = config['TNS_API']['name']
-        tns_agent = f'tns_marker{{"tns_id":{tns_id},"type": "{bot_type}", "name":"{name}"}}'
+        tns_agent = f'tns_marker{{"tns_id":{tns_id},"account_type":"{type}","name":"{name}"}}'
         response = requests.post(TNS_API_URL, data=data, headers={'User-Agent': tns_agent})
-        response.raise_for_status()  # Raise an exception
-        json_data = response.json()
-        object_TNS_data = json_data['data']['reply']
-        tns_object_info = {key: [value] for key, value in object_TNS_data.items()}
+        response.raise_for_status()
+
+        # Ensure response is a dictionary
+        response_data = response.json()
+        if not isinstance(response_data, dict):
+            print("Unexpected response format")
+            return None
+
+        # Extract object info
+        tns_object_info = response_data.get('data', {}).get('reply', {})
+        if not isinstance(tns_object_info, dict):
+            print("Unexpected format in response data")
+            return None
+
+        # Cache directory and file setup
+        output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
+        os.makedirs(output_dir, exist_ok=True)
+        cache_path = os.path.join(output_dir, 'tns_info.json')
+
+        # Load existing cache and update with new data
+        tns_cache_dict = {}
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r') as file:
+                for line in file:
+                    try:
+                        entry = json.loads(line)
+                        if isinstance(entry, dict):
+                            objname = entry.get('objname')
+                            if isinstance(objname, str):
+                                tns_cache_dict[objname] = entry
+                    except (json.JSONDecodeError, TypeError) as e:
+                        print(f"Error processing cache entry: {e}")
+
+        # Add or update the cache with the new entry
+        tns_cache_dict[tnsname] = tns_object_info
+
+        # Write the updated cache back to file
+        with open(cache_path, 'w') as file:
+            for entry in tns_cache_dict.values():
+                json.dump(entry, file)
+                file.write('\n')
+
         return tns_object_info
+
     except Exception as e:
-        print(f"fetching TNS info caused an error: {e}")
+        print(f"Fetching TNS info caused an error: {e}")
         return None
 
 def fetch_ztf(ztf_name):
@@ -335,6 +383,7 @@ def fetch_neowise(ra, dec):
     neowise = pd.concat((neowise_w1,neowise_w2))
     neowise.insert(len(neowise.columns),'telescope','NEOWISE')
     neowise = neowise.rename(columns={"mjd": "time"}).dropna()
+    
     return neowise
 
 def connect_atlas():
@@ -357,7 +406,6 @@ def connect_atlas():
             }
             return headers
         else:
-            print(response.json())
             raise RuntimeError(f'ERROR in connect_atlas(): {response.status_code}')
 
 def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fetched, cleaned):
@@ -412,21 +460,22 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
         for task in existing_tasks:
             json.dump(task, file)
             file.write('\n')
-    
-    if task_exists:
-        print(f"Task '{name}' updated.")
-    else:
-        print(f"New task '{name}' added.")
 
+def request_atlas_phot(name, ra,dec, alltime):
+    if alltime == True:
+        mjd_max = Time.now().mjd
+        mjd_min = 0
+    else: 
+        tns_discovery_date = Time(tns_lookup(name)['discoverydate']).mjd.item()
+        mjd_min = tns_discovery_date - 50 
+        mjd_max = Time.now().mjd + 500
 
-def request_atlas_phot(name, ra,dec):
     with requests.Session() as s:
         task_id = None 
         task_requested = None 
         while not task_requested:
             baseurl = 'https://fallingstar-data.com/forcedphot'
-            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":57388.00,"mjd_max":Time.now().mjd,"use_reduced": True})
-            print(resp)       
+            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":mjd_min,"mjd_max":Time.now().mjd,"use_reduced": True})
             if resp.status_code == 201:
                 task_url = resp.json()['url']
                 task_requested = True
@@ -459,15 +508,15 @@ def atlas_get_results(result_url):
         result_dataframe = pd.read_csv(io.StringIO(result.replace("###", "")), sep='\s+')
         return result_dataframe
 
-def fetch_atlas(ra,dec,name):
-    retries = 10
-    task_url = request_atlas_phot(name, ra , dec)
+def fetch_atlas(ra,dec,name, alltime):
+    retries = 20
+    task_url = request_atlas_phot(name, ra , dec, alltime)
 
-    for retry in range(retries):
+    for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. There will be {retries} attempts to see if the job is complete before timing out"):
         try:
             isdone, result = atlas_is_task_done(task_url)
             ATLAS_data = atlas_get_results(result)
-
+            ATLAS_data = ATLAS_data[ATLAS_data['m']>0]
             ATLAS_data.insert(len(ATLAS_data.columns),'telescope','ATLAS')
             ATLAS_data = ATLAS_data.rename(columns={"F": "band"})
             ATLAS_data = ATLAS_data.rename(columns={"m": "magnitude"})
@@ -480,21 +529,17 @@ def fetch_atlas(ra,dec,name):
         except requests.Timeout:
             print("Request timed out.")
         
-        except requests.RequestException as e:
-            print(f"Request error: {e}")
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        except requests.RequestException:
+            pass
 
         if retry < retries - 1:
-            print(f"Retrying Fetch ATLAS Attempt {retry + 1}/{retries}")
-            time.sleep(60)  # Adjust the delay between retries if needed
+            time.sleep(30)  # Add a custom sdelay between retries in the settings.ini
 
     return ATLAS_data
 
 def identify_surveys(TNS_information):
     reporting_list = TNS_information['internal_names']
-    reporting_list= reporting_list[0].split(',')
+    reporting_list= reporting_list.split(',')
     survey_dict = {}
 
     # Iterate over each string in the list
@@ -513,9 +558,21 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
-def marvin(tnsname):
+def search(tnsname):
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
+
+    # reading defaults from settings.ini
+    config = configparser.ConfigParser()
+    config.read(get_settings_file_path())
+    try:
+        alltime = config['default']['alltime']
+    except Exception as e:
+        print('There was a problem with the settings.ini')
+        return None
+
+
+    print(f'{tnsname} was observed by {surveys}')
 
     The_Book = []
 
@@ -526,13 +583,23 @@ def marvin(tnsname):
         The_Book.append(fetch_ztf(surveys['ZTF']))
 
     if 'ZTF' not in surveys:
-        The_Book.append(fetch_ztf_cone(TNS_info['radeg'][0],TNS_info['decdeg'][0],0.15))
+        print('Attempting a ZTF conesearch at the location with a radius of 0.1 arcsec')
+        The_Book.append(fetch_ztf_cone(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],0.1))
 
-    The_Book.append(fetch_atlas(TNS_info['radeg'][0],TNS_info['decdeg'][0],tnsname))
+    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime))
 
-    The_Book.append(fetch_neowise(TNS_info['radeg'][0], TNS_info['decdeg'][0]))
+    The_Book.append(fetch_neowise(TNS_info[['radeg'][0]], TNS_info[['decdeg'][0]]))
 
     combined_data = pd.concat(The_Book, ignore_index=True)
+
+    if alltime == True:
+        pass
+    else: 
+        tns_discovery_date = Time(TNS_info['discoverydate']).mjd.item()
+        mjd_min = tns_discovery_date - 50 
+        mjd_max = Time.now().mjd + 500
+
+        combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
 
     return combined_data
 

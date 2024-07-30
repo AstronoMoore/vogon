@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: vogon
-Version: 0.1.2
+Version: 0.1.3
 Summary: A basic data aggregator for astrophysical transients
 Author: Thomas Moore
 Author-email: tmoore11@qub.ac.uk
@@ -9,3 +9,5 @@ Requires-Dist: pandas
 Requires-Dist: astropy
 Requires-Dist: requests
 Requires-Dist: lasair
+Requires-Dist: tqdm
+Requires-Dist: matplotlib
