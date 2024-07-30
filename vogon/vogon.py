@@ -110,8 +110,8 @@ def get_TNS_api_key():
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
 
-        if 'TNS_API_KEY' in config['API']:
-            key = config['API']['TNS_API_KEY']
+        if 'TNS_API_KEY' in config['API_TOKENS']:
+            key = config['API_TOKENS']['TNS_API_KEY']
             return key
         else:
             print("Error: TNS API key not found in settings.ini")
@@ -126,9 +126,9 @@ def get_atlas_login_keys():
     try:
         config = configparser.ConfigParser()
         config.read(get_settings_file_path())
-        if 'ATLAS' in config:
-            username = config['ATLAS']['ATLAS_USERNAME']
-            password = config['ATLAS']['ATLAS_PASS']
+        if 'ATLAS_FP_SERVER' in config:
+            username = config['ATLAS_FP_SERVER']['ATLAS_USERNAME']
+            password = config['ATLAS_FP_SERVER']['ATLAS_PASS']
             return username, password
         else:
             print("Error: ATLAS not found in settings.ini. Please check that ATLAS login details are supplied")
@@ -145,7 +145,7 @@ def get_LASAIR_TOKEN():
     """
     config = configparser.ConfigParser()
     config.read(get_settings_file_path())
-    return config['API']['LASAIR_TOKEN']
+    return config['API_TOKENS']['LASAIR_TOKEN']
 
 def tns_lookup(tnsname):
     """
