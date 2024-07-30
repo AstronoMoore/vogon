@@ -9,12 +9,12 @@ To use Vogon, you need to install first install the software. For example, you c
 ```bash 
 pip install vogon
 ``` 
-## Example
+## Example Data Search
 
 Import the library and call the `search` function with your desired query. For instance:
 
 ```python
 from vogon import vogon
 
-vogon.search('2023ixf')
+data vogon.search('2023ixf')
 ```
