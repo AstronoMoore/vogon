@@ -1,4 +1,4 @@
-# Vogon
+# Vogon: A Basic Data Aggregator for Astrophysical Transients
 
 Vogon is a tool to simplify the most excessively complicated administrative procedure in transient astronomy.
 
