@@ -17,6 +17,7 @@ setup(
         'requests',
         'lasair',
         'tqdm',
-        'matplotlib'
+        'matplotlib',
+        'requests'
     ],
 )
