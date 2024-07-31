@@ -461,21 +461,35 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
             json.dump(task, file)
             file.write('\n')
 
-def request_atlas_phot(name, ra,dec, alltime):
-    if alltime == True:
-        mjd_max = Time.now().mjd
-        mjd_min = 0
+def request_atlas_phot(name, ra, dec, alltime, difference):
+    
+    if difference is True:
+        use_reduced = True 
     else: 
-        tns_discovery_date = Time(tns_lookup(name)['discoverydate']).mjd.item()
-        mjd_min = tns_discovery_date - 50 
+        use_reduced = False
+
+    if alltime is True:
+        mjd_max = Time.now().mjd
+        mjd_min = 0  # mjd min set sufficiently before ATLAS so we get all the data
+    else:
+        try:
+            tns_discovery_date = Time(tns_lookup(name)['discoverydate']).mjd
+            mjd_min = tns_discovery_date - 50
+        except (KeyError, TypeError, ValueError) as e:
+            print(f'Error retrieving discovery date: {e}')
+            mjd_min = 0  # Default to 0
+
         mjd_max = Time.now().mjd + 500
+
+    # Debugging: print the range of MJD
+    print(f'Fetching ATLAS data between MJD {mjd_min} and {mjd_max}')
 
     with requests.Session() as s:
         task_id = None 
         task_requested = None 
         while not task_requested:
             baseurl = 'https://fallingstar-data.com/forcedphot'
-            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":mjd_min,"mjd_max":Time.now().mjd,"use_reduced": True})
+            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":mjd_min,"mjd_max":mjd_max,"use_reduced": use_reduced})
             if resp.status_code == 201:
                 task_url = resp.json()['url']
                 task_requested = True
@@ -505,17 +519,19 @@ def atlas_get_results(result_url):
     cwd = os.getcwd()
     with requests.Session() as s:
         result = s.get(result_url, headers=connect_atlas()).text
-        result_dataframe = pd.read_csv(io.StringIO(result.replace("###", "")), sep='\s+')
+        result_dataframe = pd.read_csv(io.StringIO(result.replace("###", "")), sep=r'\s+')
         return result_dataframe
 
-def fetch_atlas(ra,dec,name, alltime):
+def fetch_atlas(ra,dec,name, alltime,difference):
+    alltime = alltime
     retries = 20
-    task_url = request_atlas_phot(name, ra , dec, alltime)
+    task_url = request_atlas_phot(name, ra , dec, alltime,difference)
 
     for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. There will be {retries} attempts to see if the job is complete before timing out"):
         try:
             isdone, result = atlas_is_task_done(task_url)
             ATLAS_data = atlas_get_results(result)
+            ATLAS_data = ATLAS_data[ATLAS_data['uJy'] > 3 * ATLAS_data['duJy']] # keeping only 3sig data
             ATLAS_data = ATLAS_data[ATLAS_data['m']>0]
             ATLAS_data.insert(len(ATLAS_data.columns),'telescope','ATLAS')
             ATLAS_data = ATLAS_data.rename(columns={"F": "band"})
@@ -565,11 +581,16 @@ def search(tnsname):
     # reading defaults from settings.ini
     config = configparser.ConfigParser()
     config.read(get_settings_file_path())
+    alltime = False
+    ATLAS_difference = False
     try:
         alltime = config['default']['alltime']
+        ATLAS_difference = config['default']['ATLAS_difference_images']
     except Exception as e:
         print('There was a problem with the settings.ini')
         return None
+    
+    alltime = config['default']['alltime']
 
 
     print(f'{tnsname} was observed by {surveys}')
@@ -586,19 +607,16 @@ def search(tnsname):
         print('Attempting a ZTF conesearch at the location with a radius of 0.1 arcsec')
         The_Book.append(fetch_ztf_cone(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],0.1))
 
-    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime))
+    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime,ATLAS_difference))
 
     The_Book.append(fetch_neowise(TNS_info[['radeg'][0]], TNS_info[['decdeg'][0]]))
 
     combined_data = pd.concat(The_Book, ignore_index=True)
 
-    if alltime == True:
-        pass
-    else: 
+    if alltime == False:
         tns_discovery_date = Time(TNS_info['discoverydate']).mjd.item()
         mjd_min = tns_discovery_date - 50 
         mjd_max = Time.now().mjd + 500
-
         combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
 
     return combined_data
