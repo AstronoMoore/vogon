@@ -11,13 +11,15 @@ pip install vogon
 ``` 
 ## Example Data Search
 
-Import the library and call the `search` function with your desired query. For instance:
+Import the library and call the `search` function with your desired query. Example for SN 2023ixf:
 
 ```python
 from vogon import vogon
 
 data = vogon.search('2023ixf')
 ```
+
+Vogon uses IAU names with no AT or SN prefix
 
 
 ## Example TNS Lookup
