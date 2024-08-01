@@ -595,7 +595,7 @@ def search(tnsname):
 
     print(f'{tnsname} was observed by {surveys}')
 
-    The_Book = []
+    The_Book = [] # the book is a silly reference to HHGTTG that I decided to stick with :) 
 
     if 'Gaia' in surveys: 
         The_Book.append(fetch_gaia(surveys['Gaia']))
