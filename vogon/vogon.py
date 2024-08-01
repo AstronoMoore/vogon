@@ -694,7 +694,7 @@ def search(tnsname):
 
 
 
-    # plot_vogon(TNS_info, combined_data)
+    plot_vogon(TNS_info, combined_data)
 
 
     return combined_data
