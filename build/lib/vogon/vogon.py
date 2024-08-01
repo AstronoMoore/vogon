@@ -27,6 +27,8 @@ import pkg_resources
 from vogon.config import get_settings_file_path
 from vogon.config import set_setting_filepath
 from tqdm import tqdm
+import plotly.graph_objects as go
+from matplotlib.pyplot import cm
 
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
@@ -298,8 +300,6 @@ def fetch_ztf_cone(ra, dec, radius):
         print(f"An error occurred during ZTF cone search: {e}")
         return None
     
-import numpy as np
-
 def gaia_e_mag(g_mag):
     """
     Calculate the Gaia magnitude error based on the given G-band magnitude(s).
@@ -307,32 +307,22 @@ def gaia_e_mag(g_mag):
     This function uses a polynomial model to estimate the magnitude error for Gaia photometry. The model is derived from the study:
     https://www.aanda.org/articles/aa/pdf/2021/08/aa40735-21.pdf
 
-    Parameters:
-    g_mag (float, list, or np.ndarray): The G-band magnitude value(s). Can be a single float, a list of floats, or a NumPy array.
-
-    Returns:
-    float, list, or np.ndarray: The estimated Gaia magnitude error(s). If the input magnitude(s) is/are less than 13, a constant error value of 0.02 is returned.
     """
+
     # Convert input to NumPy array for vectorized operations
     g_mag = np.asarray(g_mag)
 
     # Define constants for the polynomial model
-    if np.issubdtype(g_mag.dtype, np.number):
-        c0, c1, c2, c3, c4 = 3.43779, 1.13759, 3.44123, 6.51996, 11.45922
+    if g_mag <= 13:
+        return 0.02
 
-        # Initialize error array
-        e_mag = np.full_like(g_mag, 0.02, dtype=float)
+    c0, c1, c2, c3, c4 = 3.43779, 1.13759, 3.44123, 6.51996, 11.45922
 
-        # Apply polynomial model for magnitudes >= 13
-        mask = g_mag >= 13
-        g_mag_valid = g_mag[mask]
-        e_mag[mask] = (c0 - (g_mag_valid / c1) +
-                       (g_mag_valid / c2)**2 -
-                       (g_mag_valid / c3)**3 +
-                       (g_mag_valid / c4)**4)
-    else:
-        raise ValueError("The input must be a numeric type.")
-
+    e_mag = (c0 - (g_mag / c1) +
+                    (g_mag / c2)**2 -
+                    (g_mag / c3)**3 +
+                    (g_mag / c4)**4)
+        
     return e_mag
 
 
@@ -461,21 +451,35 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
             json.dump(task, file)
             file.write('\n')
 
-def request_atlas_phot(name, ra,dec, alltime):
-    if alltime == True:
-        mjd_max = Time.now().mjd
-        mjd_min = 0
+def request_atlas_phot(name, ra, dec, alltime, difference):
+    
+    if difference is True:
+        use_reduced = True 
     else: 
-        tns_discovery_date = Time(tns_lookup(name)['discoverydate']).mjd.item()
-        mjd_min = tns_discovery_date - 50 
+        use_reduced = False
+
+    if alltime is True:
+        mjd_max = Time.now().mjd
+        mjd_min = 0  # mjd min set sufficiently before ATLAS so we get all the data
+    else:
+        try:
+            tns_discovery_date = Time(tns_lookup(name)['discoverydate']).mjd
+            mjd_min = tns_discovery_date - 50
+        except (KeyError, TypeError, ValueError) as e:
+            print(f'Error retrieving discovery date: {e}')
+            mjd_min = 0  # Default to 0
+
         mjd_max = Time.now().mjd + 500
+
+    # Debugging: print the range of MJD
+    print(f'Fetching ATLAS data between MJD {mjd_min} and {mjd_max}')
 
     with requests.Session() as s:
         task_id = None 
         task_requested = None 
         while not task_requested:
             baseurl = 'https://fallingstar-data.com/forcedphot'
-            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":mjd_min,"mjd_max":Time.now().mjd,"use_reduced": True})
+            resp = s.post(f"{baseurl}/queue/",headers=connect_atlas(),data={'ra':ra,'dec':dec,'send_email':False,"mjd_min":mjd_min,"mjd_max":mjd_max,"use_reduced": use_reduced})
             if resp.status_code == 201:
                 task_url = resp.json()['url']
                 task_requested = True
@@ -505,17 +509,19 @@ def atlas_get_results(result_url):
     cwd = os.getcwd()
     with requests.Session() as s:
         result = s.get(result_url, headers=connect_atlas()).text
-        result_dataframe = pd.read_csv(io.StringIO(result.replace("###", "")), sep='\s+')
+        result_dataframe = pd.read_csv(io.StringIO(result.replace("###", "")), sep=r'\s+')
         return result_dataframe
 
-def fetch_atlas(ra,dec,name, alltime):
+def fetch_atlas(ra,dec,name, alltime,difference):
+    alltime = alltime
     retries = 20
-    task_url = request_atlas_phot(name, ra , dec, alltime)
+    task_url = request_atlas_phot(name, ra , dec, alltime,difference)
 
-    for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. There will be {retries} attempts to see if the job is complete before timing out"):
+    for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. I will make {retries} attempts to see if the job is complete before timing out"):
         try:
             isdone, result = atlas_is_task_done(task_url)
             ATLAS_data = atlas_get_results(result)
+            ATLAS_data = ATLAS_data[ATLAS_data['uJy'] > 3 * ATLAS_data['duJy']] # keeping only 3sig data
             ATLAS_data = ATLAS_data[ATLAS_data['m']>0]
             ATLAS_data.insert(len(ATLAS_data.columns),'telescope','ATLAS')
             ATLAS_data = ATLAS_data.rename(columns={"F": "band"})
@@ -558,6 +564,88 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
+def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
+
+    data['time'] = pd.to_numeric(data['time'], errors='coerce')
+    data['magnitude'] = pd.to_numeric(data['magnitude'], errors='coerce')
+    if 'e_magnitude' in data.columns:
+        data['e_magnitude'] = pd.to_numeric(data['e_magnitude'], errors='coerce')
+
+    TNS_classification = tns_info['object_type']['name']
+    tns_name = tns_info['objname']
+
+    n_colors = len(data.band.unique())
+
+    color_1_def = cm.plasma(np.linspace(0, 0.9, int(round((n_colors+1)/2))))
+    color_2_def = cm.viridis(np.linspace(0.45, 0.9, int(round((n_colors+1)/2))))
+
+    color_1 = iter(color_1_def)
+    color_2 = iter(color_2_def)
+
+    band_color_index = {}
+    count = 0
+    for filter in data.band.unique():
+        if count < (n_colors / 2):
+            c = next(color_1)
+        else:
+            c = next(color_2)
+        band_color_index[filter] = f'rgba({c[0]*255},{c[1]*255},{c[2]*255},{c[3]})'
+        count += 1
+
+    traces = []
+
+    for telescope in data['telescope'].unique():
+        single_scope = data[data['telescope'] == telescope]
+        
+        for filter in single_scope['band'].unique():
+            filtered_data = single_scope[single_scope['band'] == filter]
+            
+            filtered_data = filtered_data.sort_values(by='time')
+
+            color = band_color_index.get(filter, 'rgba(0,0,0,1)')
+            marker_shape = 'circle' 
+
+            if 'e_magnitude' in filtered_data.columns:
+                error_values = filtered_data['e_magnitude'].fillna(0).values 
+            else:
+                error_values = None
+
+            trace = go.Scatter(
+                x=filtered_data['time'],
+                y=filtered_data['magnitude'],
+                mode='markers',
+                marker=dict(
+                    symbol=marker_shape,
+                    size=10,
+                    color=color
+                ),
+                name=f'{telescope} - {filter}',
+                error_y=dict(
+                    type='data',
+                    array=error_values.tolist() if error_values is not None else None,
+                    visible=True 
+                )
+            )
+            traces.append(trace)
+
+    fig = go.Figure(data=traces)
+
+    fig.update_layout(
+        title=f'{tns_name} Classification: {TNS_classification}',
+        xaxis_title='MJD',
+        yaxis_title='Apparent Magnitude',
+        yaxis=dict(
+            autorange='reversed', 
+            tickformat='.2f' 
+        ),
+        xaxis=dict(
+            tickformat='.2f'  
+        )
+    )
+
+    fig.show()
+
+
 def search(tnsname):
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
@@ -565,16 +653,21 @@ def search(tnsname):
     # reading defaults from settings.ini
     config = configparser.ConfigParser()
     config.read(get_settings_file_path())
+    alltime = False
+    ATLAS_difference = False
     try:
         alltime = config['default']['alltime']
+        ATLAS_difference = config['default']['ATLAS_difference_images']
     except Exception as e:
         print('There was a problem with the settings.ini')
         return None
+    
+    alltime = config['default']['alltime']
 
 
     print(f'{tnsname} was observed by {surveys}')
 
-    The_Book = []
+    The_Book = [] # the book is a silly reference to HHGTTG that I decided to stick with :) 
 
     if 'Gaia' in surveys: 
         The_Book.append(fetch_gaia(surveys['Gaia']))
@@ -586,20 +679,23 @@ def search(tnsname):
         print('Attempting a ZTF conesearch at the location with a radius of 0.1 arcsec')
         The_Book.append(fetch_ztf_cone(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],0.1))
 
-    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime))
+    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime,ATLAS_difference))
 
     The_Book.append(fetch_neowise(TNS_info[['radeg'][0]], TNS_info[['decdeg'][0]]))
 
     combined_data = pd.concat(The_Book, ignore_index=True)
 
-    if alltime == True:
-        pass
-    else: 
+    if alltime == False:
         tns_discovery_date = Time(TNS_info['discoverydate']).mjd.item()
         mjd_min = tns_discovery_date - 50 
         mjd_max = Time.now().mjd + 500
-
         combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
+
+
+
+
+    plot_vogon(TNS_info, combined_data)
+
 
     return combined_data
 

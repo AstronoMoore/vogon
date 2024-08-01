@@ -1,13 +1,9 @@
-import requests
 import sys
 import json
 import configparser
-import pandas as pd
-from astropy.time import Time
 from lasair import LasairError, lasair_client as lasair
 import urllib.parse
 from urllib.parse import urlencode
-from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.table import Table
@@ -29,6 +25,7 @@ from vogon.config import set_setting_filepath
 from tqdm import tqdm
 import plotly.graph_objects as go
 from matplotlib.pyplot import cm
+import numpy as np
 
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
