@@ -27,14 +27,40 @@ def set_setting_filepath():
     return path
 
 def create_settings_template():
-    template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
-    
-    with open(template_path, 'r') as template_file:
-        template_content = template_file.read()
-    
+
     settings_path = get_settings_file_path()
-    with open(settings_path, 'w') as output_file:
-        output_file.write(template_content)
+
+    content = """\
+    # Here we will specify some required tokens, usernames and passwords
+
+    [API_TOKENS] ; please make a bot a https://www.wis-tns.org/bots using the '+ Add bot' button  
+    tns_api_key = 
+    lasair_token = 
+
+    [TNS_API] ; please make a bot a https://www.wis-tns.org/bots using the '+ Add bot' button  
+    tns_id = 
+    type = 
+    name = 
+
+    [ATLAS_FP_SERVER] ; please make an account at https://fallingstar-data.com/forcedphot/
+    atlas_username = 
+    atlas_pass = 
+
+    [output] ; please specify an output directory
+    output_dir =
+
+    [default] ; by default vogon returns data from 50 days before discovery and to 500 days after discovery. By setting alltime to True the data will be returned for alltime 
+    alltime = False
+    ATLAS_difference_images = False # set to false by diffault since this takes considerably longer and for quicklook adds marginal utility
+
+    """
+
+    # Write the content to the specified file
+    with open(settings_path, 'w') as file:
+        file.write(content)
+
+    print(f'{settings_path} created successfully.')
+    
 
 def get_settings_file_path():
     settings_path = load_config_path()
