@@ -30,7 +30,6 @@ from tqdm import tqdm
 import plotly.graph_objects as go
 from matplotlib.pyplot import cm
 
-
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
     
