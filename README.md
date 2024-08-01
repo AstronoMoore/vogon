@@ -1,8 +1,8 @@
 # Vogon: A Basic Data Aggregator for Astrophysical Transients
 
-Vogon gathers, homogenises and serves public photometry to the user for a given transient source.
+Vogon gathers, homogenises and serves public photometry to the user for a given transient source. This is a tool born out of frustration and aims to simplify the most excessively complicated administrative procedure in transient astronomy. The data returned should be regarded as quicklook only and is not intended to be publication ready but to quickly inform uses os measurements and limits to enable time domain astronomy. 
 
-Vogon is a tool born out of frustration to simplify the most excessively complicated administrative procedure in transient astronomy.
+“It is a capital mistake to theorize before one has data.” — Sherlock Holmes
 
 ## Installation
 
