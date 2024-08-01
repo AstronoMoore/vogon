@@ -23,7 +23,9 @@ vogon.set_setting_filepath()
 ```
 You will then be prompted to provide a directory e.g. ~/vogon_settings 
 
-Please navigate to the setings file and add your TNS and Lasiar credentials.
+## Please then navigate to the setings file and add your TNS and Lasiar credentials.
+
+You will need to make a TNS bot which is straightforward
 
 ## Example Data Search
 
