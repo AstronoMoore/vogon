@@ -20,6 +20,7 @@ setup(
         'matplotlib',
         'requests', 
         'plotly',
-        'nbformat>=4.2.0'
+        'nbformat>=4.2.0',
+        'kaleido'
     ],
 )

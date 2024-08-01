@@ -526,7 +526,7 @@ def fetch_atlas(ra,dec,name, alltime,difference):
     retries = 20
     task_url = request_atlas_phot(name, ra , dec, alltime,difference)
 
-    for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. There will be {retries} attempts to see if the job is complete before timing out"):
+    for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. I will make {retries} attempts to see if the job is complete before timing out"):
         try:
             isdone, result = atlas_is_task_done(task_url)
             ATLAS_data = atlas_get_results(result)
@@ -573,6 +573,74 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
+
+import numpy as np
+import plotly.graph_objects as go
+
+def plot_vogon(tns_info, data):
+    
+    TNS_classification = tns_info['object_type']['name']
+    tns_name = tns_info['objname']
+
+
+    n_colors = len(data.band.unique())
+
+    color_def = cm.plasma(np.linspace(0.1, 0.95, n_colors))
+
+    color_1 = iter(color_def)
+
+    band_color_index = {}
+
+    count = 0
+    for filter in data.band.unique():
+        c = next(color_1)
+        band_color_index[filter] = f'rgba({c[0]*255},{c[1]*255},{c[2]*255},{c[3]})'
+        count += 1
+
+    # Create a list to store traces for each telescope
+    traces = []
+
+    # Iterate over each unique telescope
+    for telescope in data['telescope'].unique():
+        single_scope = data[data['telescope'] == telescope]
+        
+        for filter in single_scope['band'].unique():
+            filtered_data = single_scope[single_scope['band'] == filter]
+            color = band_color_index.get(filter, 'rgba(0,0,0,1)') 
+            marker_shape = 'circle'
+
+            # Create a scatter trace for the current telescope and filter
+            trace = go.Scatter(
+                x=filtered_data['time'],
+                y=filtered_data['magnitude'],
+                mode='markers',
+                marker=dict(
+                    symbol=marker_shape,
+                    size=10,
+                    color=color  # Apply the custom color
+                ),
+                name=f'{telescope} - {filter}'
+            )
+            traces.append(trace)
+
+    # Create the figure with all traces
+    fig = go.Figure(data=traces)
+
+    # Update layout for better visualization
+    fig.update_layout(
+        title=f'{tns_name} Classification: {TNS_classification}',
+        xaxis_title='MJD',
+        yaxis_title='Apparent Magnitude',
+        yaxis=dict(autorange='reversed'), # Invert y-axis
+        xaxis=dict(tickformat='.f')
+    )
+
+    # Show the plot
+    fig.show()
+
+
+
+
 def search(tnsname):
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
@@ -617,6 +685,12 @@ def search(tnsname):
         mjd_min = tns_discovery_date - 50 
         mjd_max = Time.now().mjd + 500
         combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
+
+
+
+
+    plot_vogon(TNS_info, combined_data)
+
 
     return combined_data
 
