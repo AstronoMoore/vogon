@@ -22,7 +22,7 @@ or from pip
 pip install vogon
 ```
 
-## Necessary Setup Steps
+## Necessary Setup Steps (one time)
 
 ```python
 from vogon import vogon
@@ -31,6 +31,8 @@ vogon.set_setting_filepath()
 
 ```
 You will then be prompted to provide a directory e.g. ~/vogon_settings 
+You will not need to run this step again
+
 
 ## Please then navigate to the setings file and add your TNS and Lasiar credentials.
 
