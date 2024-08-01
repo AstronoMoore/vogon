@@ -349,10 +349,8 @@ def gaia_e_mag(g_mag):
 
     """
 
-    # Convert input to NumPy array for vectorized operations
     g_mag = np.asarray(g_mag)
 
-    # Define constants for the polynomial model
     if g_mag <= 13:
         return 0.02
 
