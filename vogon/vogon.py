@@ -127,7 +127,7 @@ def check_output_dir():
         try:
             os.makedirs(output_dir+'data')
 
-            print(f"Created directory: {output_dir+'/plots'}")
+            print(f"Created directory: {output_dir+'/data'}")
         except OSError as e:
             print(f"Failed to create directory: {e}")
             return
