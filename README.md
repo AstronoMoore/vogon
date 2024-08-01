@@ -14,6 +14,11 @@ git clone https://github.com/AstronoMoore/vogon.git
 cd  vogon
 pip install .
 ```
+or from pip 
+
+```bash 
+pip install vogon
+```
 
 ## Necessary Setup Steps
 
