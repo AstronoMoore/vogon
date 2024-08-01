@@ -509,7 +509,7 @@ def request_atlas_phot(name, ra, dec, alltime, difference):
             print(f'Error retrieving discovery date: {e}')
             mjd_min = 0  # Default to 0
 
-        mjd_max = Time.now().mjd + 500
+        mjd_max = tns_discovery_date + 500
 
     # Debugging: print the range of MJD
     print(f'Fetching ATLAS data between MJD {mjd_min} and {mjd_max}')
