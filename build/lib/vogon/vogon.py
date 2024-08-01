@@ -1,13 +1,9 @@
-import requests
 import sys
 import json
 import configparser
-import pandas as pd
-from astropy.time import Time
 from lasair import LasairError, lasair_client as lasair
 import urllib.parse
 from urllib.parse import urlencode
-from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.table import Table
@@ -29,6 +25,7 @@ from vogon.config import set_setting_filepath
 from tqdm import tqdm
 import plotly.graph_objects as go
 from matplotlib.pyplot import cm
+import numpy as np
 
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
@@ -87,7 +84,27 @@ def check_output_dir():
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
+
             print(f"Created directory: {output_dir}")
+        except OSError as e:
+            print(f"Failed to create directory: {e}")
+            return
+        
+
+    if not os.path.exists(output_dir+'plots'):
+        try:
+            os.makedirs(output_dir+'plots')
+
+            print(f"Created directory: {output_dir+'/plots'}")
+        except OSError as e:
+            print(f"Failed to create directory: {e}")
+            return
+
+    if not os.path.exists(output_dir+'data'):
+        try:
+            os.makedirs(output_dir+'data')
+
+            print(f"Created directory: {output_dir+'/plots'}")
         except OSError as e:
             print(f"Failed to create directory: {e}")
             return
@@ -521,14 +538,18 @@ def fetch_atlas(ra,dec,name, alltime,difference):
         try:
             isdone, result = atlas_is_task_done(task_url)
             ATLAS_data = atlas_get_results(result)
-            ATLAS_data = ATLAS_data[ATLAS_data['uJy'] > 3 * ATLAS_data['duJy']] # keeping only 3sig data
+            ATLAS_data['limit'] = False
+
+            # Update the 'limit' column to True where the condition is met
+            ATLAS_data.loc[ATLAS_data['uJy'] < 3 * ATLAS_data['duJy'], 'limit'] = True # marking all non 3sig detections as limits
+
             ATLAS_data = ATLAS_data[ATLAS_data['m']>0]
             ATLAS_data.insert(len(ATLAS_data.columns),'telescope','ATLAS')
             ATLAS_data = ATLAS_data.rename(columns={"F": "band"})
             ATLAS_data = ATLAS_data.rename(columns={"m": "magnitude"})
             ATLAS_data = ATLAS_data.rename(columns={"dm": "e_magnitude"})
             ATLAS_data = ATLAS_data.rename(columns={"MJD": "time"})
-            ATLAS_data = ATLAS_data.filter(['time','magnitude','e_magnitude','telescope','band'])
+            ATLAS_data = ATLAS_data.filter(['time','magnitude','e_magnitude','telescope','band','limit'])
 
             return ATLAS_data
         
@@ -565,17 +586,18 @@ def identify_surveys(TNS_information):
     return survey_dict
 
 def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
-
+    # Convert columns to numeric
     data['time'] = pd.to_numeric(data['time'], errors='coerce')
     data['magnitude'] = pd.to_numeric(data['magnitude'], errors='coerce')
     if 'e_magnitude' in data.columns:
         data['e_magnitude'] = pd.to_numeric(data['e_magnitude'], errors='coerce')
 
+    # Classify TNS object
     TNS_classification = tns_info['object_type']['name']
     tns_name = tns_info['objname']
 
+    # Define colors for different bands
     n_colors = len(data.band.unique())
-
     color_1_def = cm.plasma(np.linspace(0, 0.9, int(round((n_colors+1)/2))))
     color_2_def = cm.viridis(np.linspace(0.45, 0.9, int(round((n_colors+1)/2))))
 
@@ -594,42 +616,62 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
 
     traces = []
 
+    # Trace for regular data points
     for telescope in data['telescope'].unique():
         single_scope = data[data['telescope'] == telescope]
         
         for filter in single_scope['band'].unique():
             filtered_data = single_scope[single_scope['band'] == filter]
-            
             filtered_data = filtered_data.sort_values(by='time')
 
             color = band_color_index.get(filter, 'rgba(0,0,0,1)')
             marker_shape = 'circle' 
 
-            if 'e_magnitude' in filtered_data.columns:
-                error_values = filtered_data['e_magnitude'].fillna(0).values 
-            else:
-                error_values = None
-
-            trace = go.Scatter(
-                x=filtered_data['time'],
-                y=filtered_data['magnitude'],
-                mode='markers',
-                marker=dict(
-                    symbol=marker_shape,
-                    size=10,
-                    color=color
-                ),
-                name=f'{telescope} - {filter}',
-                error_y=dict(
-                    type='data',
-                    array=error_values.tolist() if error_values is not None else None,
-                    visible=True 
+            # Plot circular markers for regular data points
+            regular_data = filtered_data[filtered_data['limit'] != True]
+            if not regular_data.empty:
+                trace = go.Scatter(
+                    x=regular_data['time'],
+                    y=regular_data['magnitude'],
+                    mode='markers',
+                    marker=dict(
+                        symbol=marker_shape,
+                        size=10,
+                        color=color
+                    ),
+                    name=f'{telescope} - {filter}',
+                    error_y=dict(
+                        type='data',
+                        array=regular_data['e_magnitude'].fillna(0).tolist() if 'e_magnitude' in regular_data.columns else None,
+                        visible=True 
+                    )
                 )
-            )
-            traces.append(trace)
+                traces.append(trace)
 
+            limit_data = filtered_data[filtered_data['limit'] == True]
+            if not limit_data.empty:
+                limit_trace = go.Scatter(
+                    x=limit_data['time'],
+                    y=limit_data['magnitude'],
+                    mode='markers',
+                    marker=dict(
+                        symbol='arrow-down',  # Downward-pointing arrow
+                        size=12,
+                        color='rgba(0,0,0,0)',  # Transparent fill
+                        line=dict(
+                            color=color,  # Edge color
+                            width=2                # Edge width
+                        )
+                    ),
+                    name=f'{telescope} - {filter} (Limit)',
+                    error_y=None  # No error bars for limit points
+                )
+                traces.append(limit_trace)
+
+    # Create the figure
     fig = go.Figure(data=traces)
 
+    # Update layout
     fig.update_layout(
         title=f'{tns_name} Classification: {TNS_classification}',
         xaxis_title='MJD',
@@ -643,10 +685,13 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
         )
     )
 
+    # Show the plot
     fig.show()
 
+    return fig
 
 def search(tnsname):
+    check_output_dir()
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
 
@@ -693,8 +738,14 @@ def search(tnsname):
 
 
 
+    output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
 
-    plot_vogon(TNS_info, combined_data)
+    fig = plot_vogon(TNS_info, combined_data)
+    fig.write_html(output_dir+'plots/'+tnsname+'.html')
+    fig.write_image(output_dir+'plots/'+tnsname+'.pdf')
+
+
+    combined_data.to_csv(output_dir+'data/'+tnsname+'.csv', index = False)
 
 
     return combined_data

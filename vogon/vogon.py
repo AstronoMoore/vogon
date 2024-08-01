@@ -84,7 +84,27 @@ def check_output_dir():
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
+
             print(f"Created directory: {output_dir}")
+        except OSError as e:
+            print(f"Failed to create directory: {e}")
+            return
+        
+
+    if not os.path.exists(output_dir+'plots'):
+        try:
+            os.makedirs(output_dir+'plots')
+
+            print(f"Created directory: {output_dir+'/plots'}")
+        except OSError as e:
+            print(f"Failed to create directory: {e}")
+            return
+
+    if not os.path.exists(output_dir+'data'):
+        try:
+            os.makedirs(output_dir+'data')
+
+            print(f"Created directory: {output_dir+'/plots'}")
         except OSError as e:
             print(f"Failed to create directory: {e}")
             return
@@ -668,7 +688,10 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
     # Show the plot
     fig.show()
 
+    return fig
+
 def search(tnsname):
+    check_output_dir()
     TNS_info = tns_lookup(tnsname)
     surveys = identify_surveys(TNS_info)
 
@@ -715,8 +738,14 @@ def search(tnsname):
 
 
 
+    output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
 
-    plot_vogon(TNS_info, combined_data)
+    fig = plot_vogon(TNS_info, combined_data)
+    fig.write_html(output_dir+'plots/'+tnsname+'.html')
+    fig.write_image(output_dir+'plots/'+tnsname+'.pdf')
+
+
+    combined_data.to_csv(output_dir+'data/'+tnsname+'.csv', index = False)
 
 
     return combined_data
