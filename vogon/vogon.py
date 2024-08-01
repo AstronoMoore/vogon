@@ -27,6 +27,7 @@ import pkg_resources
 from vogon.config import get_settings_file_path
 from vogon.config import set_setting_filepath
 from tqdm import tqdm
+import plotly.graph_objects as go
 
 def create_settings_template():
     template_path = pkg_resources.resource_filename('vogon', 'templates/settings_template.ini')
@@ -298,8 +299,6 @@ def fetch_ztf_cone(ra, dec, radius):
         print(f"An error occurred during ZTF cone search: {e}")
         return None
     
-import numpy as np
-
 def gaia_e_mag(g_mag):
     """
     Calculate the Gaia magnitude error based on the given G-band magnitude(s).

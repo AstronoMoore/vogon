@@ -2,6 +2,7 @@
 .gitattributes
 License.txt
 README.md
+Untitled.ipynb
 setup.cfg
 setup.py
 .eggs/README.txt
@@ -123,13 +124,13 @@ setup.py
 .eggs/setuptools_scm-8.1.0-py3.12.egg/setuptools_scm/_integration/__pycache__/setuptools.cpython-312.pyc
 .eggs/setuptools_scm-8.1.0-py3.12.egg/setuptools_scm/_integration/__pycache__/toml.cpython-312.pyc
 .github/workflows/python-publish.yml
+.ipynb_checkpoints/Untitled-checkpoint.ipynb
 __pycache__/vogon.cpython-311.pyc
 dist/.DS_Store
 dist/vogon-0.1.3-py3-none-any.whl
 dist/vogon-0.1.3.tar.gz
 vogon/.DS_Store
 vogon/__init__.py
-vogon/config.py
 vogon/vogon.py
 vogon.egg-info/PKG-INFO
 vogon.egg-info/SOURCES.txt
@@ -142,4 +143,6 @@ vogon/__pycache__/config.cpython-311.pyc
 vogon/__pycache__/config.cpython-312.pyc
 vogon/__pycache__/vogon.cpython-311.pyc
 vogon/__pycache__/vogon.cpython-312.pyc
+vogon/config/__init__.py
+vogon/config/config.py
 vogon/templates/settings_template.ini

@@ -11,3 +11,6 @@ Requires-Dist: requests
 Requires-Dist: lasair
 Requires-Dist: tqdm
 Requires-Dist: matplotlib
+Requires-Dist: requests
+Requires-Dist: plotly
+Requires-Dist: nbformat>=4.2.0

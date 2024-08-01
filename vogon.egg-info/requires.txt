@@ -4,3 +4,6 @@ requests
 lasair
 tqdm
 matplotlib
+requests
+plotly
+nbformat>=4.2.0

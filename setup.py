@@ -18,6 +18,8 @@ setup(
         'lasair',
         'tqdm',
         'matplotlib',
-        'requests'
+        'requests', 
+        'plotly',
+        'nbformat>=4.2.0'
     ],
 )
