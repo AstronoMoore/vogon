@@ -7,10 +7,12 @@ Mixing fandoms but the quote “It is a capital mistake to theorize before one h
 
 ## Installation
 
-To use Vogon, you need to install first install the software. For example, you can install `vogon` using pip:
+To use Vogon, you need to install first install the software. For example, you can install `vogon` from source:
 
 ```bash 
-pip install vogon
+git clone https://github.com/AstronoMoore/vogon.git
+cd  vogon
+pip install .
 ```
 
 ## Necessary Setup Steps
