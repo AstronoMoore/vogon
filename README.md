@@ -8,7 +8,20 @@ To use Vogon, you need to install first install the software. For example, you c
 
 ```bash 
 pip install vogon
-``` 
+```
+
+## Necessary Setup Steps
+
+```python
+from vogon import vogon
+
+vogon.set_setting_filepath()
+
+```
+You will then be prompted to provide a directory e.g. ~/vogon_settings 
+
+Please navigate to the setings file and add your TNS and Lasiar credentials.
+
 ## Example Data Search
 
 Import the library and call the `search` function with your desired query. Example for SN 2023ixf:
