@@ -307,32 +307,22 @@ def gaia_e_mag(g_mag):
     This function uses a polynomial model to estimate the magnitude error for Gaia photometry. The model is derived from the study:
     https://www.aanda.org/articles/aa/pdf/2021/08/aa40735-21.pdf
 
-    Parameters:
-    g_mag (float, list, or np.ndarray): The G-band magnitude value(s). Can be a single float, a list of floats, or a NumPy array.
-
-    Returns:
-    float, list, or np.ndarray: The estimated Gaia magnitude error(s). If the input magnitude(s) is/are less than 13, a constant error value of 0.02 is returned.
     """
+
     # Convert input to NumPy array for vectorized operations
     g_mag = np.asarray(g_mag)
 
     # Define constants for the polynomial model
-    if np.issubdtype(g_mag.dtype, np.number):
-        c0, c1, c2, c3, c4 = 3.43779, 1.13759, 3.44123, 6.51996, 11.45922
+    if g_mag <= 13:
+        return 0.02
 
-        # Initialize error array
-        e_mag = np.full_like(g_mag, 0.02, dtype=float)
+    c0, c1, c2, c3, c4 = 3.43779, 1.13759, 3.44123, 6.51996, 11.45922
 
-        # Apply polynomial model for magnitudes >= 13
-        mask = g_mag >= 13
-        g_mag_valid = g_mag[mask]
-        e_mag[mask] = (c0 - (g_mag_valid / c1) +
-                       (g_mag_valid / c2)**2 -
-                       (g_mag_valid / c3)**3 +
-                       (g_mag_valid / c4)**4)
-    else:
-        raise ValueError("The input must be a numeric type.")
-
+    e_mag = (c0 - (g_mag / c1) +
+                    (g_mag / c2)**2 -
+                    (g_mag / c3)**3 +
+                    (g_mag / c4)**4)
+        
     return e_mag
 
 
@@ -574,43 +564,52 @@ def identify_surveys(TNS_information):
             survey_dict['BGEM'] = internal_name
     return survey_dict
 
+def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
 
-import numpy as np
-import plotly.graph_objects as go
+    data['time'] = pd.to_numeric(data['time'], errors='coerce')
+    data['magnitude'] = pd.to_numeric(data['magnitude'], errors='coerce')
+    if 'e_magnitude' in data.columns:
+        data['e_magnitude'] = pd.to_numeric(data['e_magnitude'], errors='coerce')
 
-def plot_vogon(tns_info, data):
-    
     TNS_classification = tns_info['object_type']['name']
     tns_name = tns_info['objname']
 
-
     n_colors = len(data.band.unique())
 
-    color_def = cm.plasma(np.linspace(0.1, 0.95, n_colors))
+    color_1_def = cm.plasma(np.linspace(0, 0.9, int(round((n_colors+1)/2))))
+    color_2_def = cm.viridis(np.linspace(0.45, 0.9, int(round((n_colors+1)/2))))
 
-    color_1 = iter(color_def)
+    color_1 = iter(color_1_def)
+    color_2 = iter(color_2_def)
 
     band_color_index = {}
-
     count = 0
     for filter in data.band.unique():
-        c = next(color_1)
+        if count < (n_colors / 2):
+            c = next(color_1)
+        else:
+            c = next(color_2)
         band_color_index[filter] = f'rgba({c[0]*255},{c[1]*255},{c[2]*255},{c[3]})'
         count += 1
 
-    # Create a list to store traces for each telescope
     traces = []
 
-    # Iterate over each unique telescope
     for telescope in data['telescope'].unique():
         single_scope = data[data['telescope'] == telescope]
         
         for filter in single_scope['band'].unique():
             filtered_data = single_scope[single_scope['band'] == filter]
-            color = band_color_index.get(filter, 'rgba(0,0,0,1)') 
-            marker_shape = 'circle'
+            
+            filtered_data = filtered_data.sort_values(by='time')
 
-            # Create a scatter trace for the current telescope and filter
+            color = band_color_index.get(filter, 'rgba(0,0,0,1)')
+            marker_shape = 'circle' 
+
+            if 'e_magnitude' in filtered_data.columns:
+                error_values = filtered_data['e_magnitude'].fillna(0).values 
+            else:
+                error_values = None
+
             trace = go.Scatter(
                 x=filtered_data['time'],
                 y=filtered_data['magnitude'],
@@ -618,28 +617,33 @@ def plot_vogon(tns_info, data):
                 marker=dict(
                     symbol=marker_shape,
                     size=10,
-                    color=color  # Apply the custom color
+                    color=color
                 ),
-                name=f'{telescope} - {filter}'
+                name=f'{telescope} - {filter}',
+                error_y=dict(
+                    type='data',
+                    array=error_values.tolist() if error_values is not None else None,
+                    visible=True 
+                )
             )
             traces.append(trace)
 
-    # Create the figure with all traces
     fig = go.Figure(data=traces)
 
-    # Update layout for better visualization
     fig.update_layout(
         title=f'{tns_name} Classification: {TNS_classification}',
         xaxis_title='MJD',
         yaxis_title='Apparent Magnitude',
-        yaxis=dict(autorange='reversed'), # Invert y-axis
-        xaxis=dict(tickformat='.f')
+        yaxis=dict(
+            autorange='reversed', 
+            tickformat='.2f' 
+        ),
+        xaxis=dict(
+            tickformat='.2f'  
+        )
     )
 
-    # Show the plot
     fig.show()
-
-
 
 
 def search(tnsname):
@@ -690,7 +694,7 @@ def search(tnsname):
 
 
 
-    plot_vogon(TNS_info, combined_data)
+    # plot_vogon(TNS_info, combined_data)
 
 
     return combined_data
