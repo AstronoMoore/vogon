@@ -4,7 +4,7 @@ setup_requires=['setuptools_scm'],
 
 setup(
     name='vogon',
-    version='0.1.3.1',
+    version='0.1.3.2',
     author='Thomas Moore',
     author_email='tmoore11@qub.ac.uk',
     description='A basic data aggregator for astrophysical transients',
