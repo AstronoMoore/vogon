@@ -52,7 +52,7 @@ def create_settings_template():
 
     [default] ; by default vogon returns data from 50 days before discovery and to 500 days after discovery. By setting alltime to True the data will be returned for alltime 
     alltime = False
-    ATLAS_difference_images = False # set to false by diffault since this takes considerably longer and for quicklook adds marginal utility
+    ATLAS_difference_images = False # set to false by default since this takes considerably longer and for quicklook adds marginal utility
 
     """
 
@@ -206,7 +206,7 @@ def tns_lookup(tnsname: str) -> dict:
         config.read(get_settings_file_path())
         try:
             tns_id = config['TNS_API']['tns_id']
-            type = config['TNS_API']['account_type']
+            type = config['TNS_API']['type']
             name = config['TNS_API']['name']
         except KeyError as e:
             print(f"Missing configuration key: {e}")
@@ -551,7 +551,6 @@ def atlas_get_results(result_url):
         return result_dataframe
 
 def fetch_atlas(ra,dec,name, alltime,difference):
-    alltime = alltime
     retries = 20
     task_url = request_atlas_phot(name, ra , dec, alltime,difference)
 
