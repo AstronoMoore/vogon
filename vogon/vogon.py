@@ -113,21 +113,24 @@ def check_output_dir():
             print(f"Failed to create directory: {e}")
             return
         
+    # making output sub directories 
+    subdirectory_plots= os.path.join(output_dir, 'plots')
+    subdirectory_data= os.path.join(output_dir, 'data')
 
-    if not os.path.exists(output_dir+'plots'):
+    if not os.path.exists(subdirectory_plots):
         try:
-            os.makedirs(output_dir+'plots')
+            os.makedirs(subdirectory_plots)
 
-            print(f"Created directory: {output_dir+'/plots'}")
+            print(f"Created directory: {subdirectory_plots}")
         except OSError as e:
             print(f"Failed to create directory: {e}")
             return
 
-    if not os.path.exists(output_dir+'data'):
+    if not os.path.exists(subdirectory_data):
         try:
-            os.makedirs(output_dir+'data')
+            os.makedirs(subdirectory_data)
 
-            print(f"Created directory: {output_dir+'/data'}")
+            print(f"Created directory: {subdirectory_data}")
         except OSError as e:
             print(f"Failed to create directory: {e}")
             return
@@ -756,13 +759,14 @@ def search(tnsname):
         mjd_max = Time.now().mjd + 500
         combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
 
-
-
     output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
 
+    subdirectory_plots= os.path.join(output_dir, 'plots')
+    subdirectory_data= os.path.join(output_dir, 'data')
+
     fig = plot_vogon(TNS_info, combined_data)
-    fig.write_html(output_dir+'plots/'+tnsname+'.html')
-    fig.write_image(output_dir+'plots/'+tnsname+'.pdf')
+    fig.write_html(subdirectory_plots+tnsname+'.html')
+    fig.write_image(subdirectory_plots+tnsname+'.pdf')
 
 
     combined_data.to_csv(output_dir+'data/'+tnsname+'.csv', index = False)
