@@ -499,12 +499,8 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
             file.write('\n')
 
 def request_atlas_phot(name, ra, dec, alltime, difference):
-    
-    print(f'difference = {difference}')
-    
+        
     use_reduced = not difference
-
-    print(f'usereduced = {use_reduced}')
 
     if alltime is True:
         mjd_max = Time.now().mjd
@@ -755,11 +751,8 @@ def search(tnsname):
     try:
         alltime_str = config.get('default', 'alltime', fallback='False')
         ATLAS_difference_str = config.get('default', 'ATLAS_difference_images', fallback='True')
-        print(f'ATLAS_difference_str {ATLAS_difference_str}')
         alltime = alltime_str.lower() in ('true', 'yes', '1')
         ATLAS_difference = ATLAS_difference_str.lower() in ('true', 'yes', '1')
-
-        print(alltime,ATLAS_difference)
     except Exception as e:
         print(e)
         print('There was a problem with the settings.ini')
