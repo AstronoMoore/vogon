@@ -26,16 +26,23 @@ from tqdm import tqdm
 import plotly.graph_objects as go
 from matplotlib.pyplot import cm
 import numpy as np
+import configargparse
+
 
 def create_settings_template():
 
     settings_path = get_settings_file_path()
 
     content = """\
+    # Settings.ini file version=0.1
+
     # Here we will specify some required tokens, usernames and passwords
 
     [API_TOKENS] ; please make a bot a https://www.wis-tns.org/bots using the '+ Add bot' button  
     tns_api_key = 
+
+    #lasair https://lasair.readthedocs.io/en/main/about.html
+
     lasair_token = 
 
     [TNS_API] ; please make a bot a https://www.wis-tns.org/bots using the '+ Add bot' button  
@@ -52,8 +59,7 @@ def create_settings_template():
 
     [default] ; by default vogon returns data from 50 days before discovery and to 500 days after discovery. By setting alltime to True the data will be returned for alltime 
     alltime = False
-    ATLAS_difference_images = False # set to false by default since this takes considerably longer and for quicklook adds marginal utility
-
+    ATLAS_difference_images = True # set to True by default (set to false if you want undifferenced images)
     """
 
     # Write the content to the specified file
@@ -494,10 +500,11 @@ def atlas_new_task_ledger(name, task_url, result_url, complete_flag, results_fet
 
 def request_atlas_phot(name, ra, dec, alltime, difference):
     
-    if difference is True:
-        use_reduced = True 
-    else: 
-        use_reduced = False
+    print(f'difference = {difference}')
+    
+    use_reduced = not difference
+
+    print(f'usereduced = {use_reduced}')
 
     if alltime is True:
         mjd_max = Time.now().mjd
@@ -554,7 +561,7 @@ def atlas_get_results(result_url):
         return result_dataframe
 
 def fetch_atlas(ra,dec,name, alltime,difference):
-    retries = 20
+    retries = 30
     task_url = request_atlas_phot(name, ra , dec, alltime,difference)
 
     for retry in tqdm(range(retries), desc=f"Talking to ATLAS Forced Phot Server. I will make {retries} attempts to see if the job is complete before timing out"):
@@ -586,6 +593,28 @@ def fetch_atlas(ra,dec,name, alltime,difference):
             time.sleep(30)  # Add a custom sdelay between retries in the settings.ini
 
     return ATLAS_data
+
+def fetch_tess(iau_name):    
+    # credit to https://tess.mit.edu/public/tesstransients/pages/readme.html
+    try:
+        data = pd.read_csv('https://tess.mit.edu/public/tesstransients/light_curves/lc_'+iau_name+'_cleaned', delim_whitespace=True, skiprows=1)   
+
+        data.columns
+        data.columns = ('BTJD', 'TJD', 'cts_per_s', 'e_cts_per_s', 'mag', 'e_mag', 'bkg','bkg_model', 'bkg2', 'e_bkg2', 'drop')
+        data = data.drop(columns=['drop']) 
+        data['JD'] = data['BTJD'] + 2457000.0
+        data['time'] = Time(data['JD'], format='jd').mjd
+        data = data[data['e_mag'] != 99.9000]
+        data.insert(len(data.columns),'telescope','TESS')
+        data.insert(len(data.columns),'band','TESS')
+        data = data.rename(columns={"mag": "magnitude"})
+        data = data.rename(columns={"e_mag": "e_magnitude"})
+        data = data.filter(['time', 'band', 'magnitude', 'e_magnitude', 'telescope'])
+        return data
+    
+    except Exception:
+        print(f"No TESS data for {iau_name} check if your object has been seen by TESS at: https://tess.mit.edu/public/tesstransients/lc_bulk/count_transients.txt")
+        return None
 
 def identify_surveys(TNS_information):
     reporting_list = TNS_information['internal_names']
@@ -724,9 +753,15 @@ def search(tnsname):
     alltime = False
     ATLAS_difference = False
     try:
-        alltime = config['default']['alltime']
-        ATLAS_difference = config['default']['ATLAS_difference_images']
+        alltime_str = config.get('default', 'alltime', fallback='False')
+        ATLAS_difference_str = config.get('default', 'ATLAS_difference_images', fallback='True')
+        print(f'ATLAS_difference_str {ATLAS_difference_str}')
+        alltime = alltime_str.lower() in ('true', 'yes', '1')
+        ATLAS_difference = ATLAS_difference_str.lower() in ('true', 'yes', '1')
+
+        print(alltime,ATLAS_difference)
     except Exception as e:
+        print(e)
         print('There was a problem with the settings.ini')
         return None
     
@@ -751,12 +786,16 @@ def search(tnsname):
 
     The_Book.append(fetch_neowise(TNS_info[['radeg'][0]], TNS_info[['decdeg'][0]]))
 
+    TESS_result = fetch_tess(tnsname)
+    if TESS_result is not None: 
+        The_Book.append(TESS_result)
+
     combined_data = pd.concat(The_Book, ignore_index=True)
 
     if alltime == False:
         tns_discovery_date = Time(TNS_info['discoverydate']).mjd.item()
         mjd_min = tns_discovery_date - 50 
-        mjd_max = Time.now().mjd + 500
+        mjd_max = tns_discovery_date + 500
         combined_data  = combined_data[(combined_data['time'] > mjd_min) & (combined_data['time'] < mjd_max)]
 
     output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
@@ -765,11 +804,11 @@ def search(tnsname):
     subdirectory_data= os.path.join(output_dir, 'data')
 
     fig = plot_vogon(TNS_info, combined_data)
-    fig.write_html(subdirectory_plots+tnsname+'.html')
-    fig.write_image(subdirectory_plots+tnsname+'.pdf')
+    fig.write_html(subdirectory_plots+'/'+tnsname+'.html')
+    fig.write_image(subdirectory_plots+'.'+tnsname+'.pdf')
 
 
-    combined_data.to_csv(output_dir+'data/'+tnsname+'.csv', index = False)
+    combined_data.to_csv(subdirectory_data+'/'+tnsname+'.csv', index = False)
 
 
     return combined_data
