@@ -50,7 +50,7 @@ data = vogon.search('2023ixf')
 
 Vogon uses IAU names with no AT or SN prefix
 
-# Please cite the appropriate orginal sources of the data
+## Please cite the appropriate orginal sources of the data
 
 # Example TNS Lookup
 
