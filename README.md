@@ -38,7 +38,7 @@ You will not need to run this step again
 
 You will need to make a TNS bot which is straightforward
 
-## Example Data Search
+# Example Data Search:
 
 Import the library and call the `search` function with your desired query. Example for SN 2023ixf:
 
@@ -50,8 +50,9 @@ data = vogon.search('2023ixf')
 
 Vogon uses IAU names with no AT or SN prefix
 
+# Please cite the appropriate orginal sources of the data
 
-## Example TNS Lookup
+# Example TNS Lookup
 
 ```python
 from vogon import vogon
