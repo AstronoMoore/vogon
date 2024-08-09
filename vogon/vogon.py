@@ -798,7 +798,7 @@ def search(tnsname):
 
     fig = plot_vogon(TNS_info, combined_data)
     fig.write_html(subdirectory_plots+'/'+tnsname+'.html')
-    fig.write_image(subdirectory_plots+'.'+tnsname+'.pdf')
+    fig.write_image(subdirectory_plots+'/'+tnsname+'.pdf')
 
 
     combined_data.to_csv(subdirectory_data+'/'+tnsname+'.csv', index = False)
