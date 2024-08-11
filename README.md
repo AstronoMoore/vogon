@@ -62,3 +62,8 @@ tns_info = vogon.tns_lookup('2023ixf')
 redshift = tns_info['redshift']
 discoverer = tns_info['discoverer']
 ```
+
+
+# Another Example:
+
+![screenshot](voogn_example.jpg)
