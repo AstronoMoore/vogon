@@ -4,7 +4,7 @@ Vogon gathers, homogenises and serves public photometry to the user for a given 
 
 ## Vogon gathers data from ATLAS, ZTF via Lasair, GAIA, TESS, and NEOWISE. Suggestions to include other surveys or sources of information are strongly encouraged.
 
-Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to solving crime.
+Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to solving detective work.
 
 
 ## Installation
