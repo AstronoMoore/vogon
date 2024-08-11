@@ -31,6 +31,7 @@ vogon.set_setting_filepath()
 
 ```
 You will then be prompted to provide a directory e.g. ~/vogon_settings 
+
 You will not need to run this step again
 
 
