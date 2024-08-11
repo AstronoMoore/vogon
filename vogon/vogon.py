@@ -289,10 +289,9 @@ def fetch_ztf(ztf_name):
 
     Args:
     - ztf_name (str): The name of the ZTF object to fetch data for.
-    - api_client: An instance of the LASAIR API client.
-
+    
     Returns:
-    - pd.DataFrame: DataFrame containing the processed ZTF data.
+    - DataFrame containing the processed ZTF data.
     """
 
     try:
@@ -353,7 +352,7 @@ def gaia_e_mag(g_mag):
     """
     Calculate the Gaia magnitude error based on the given G-band magnitude(s).
 
-    This function uses a polynomial model to estimate the magnitude error for Gaia photometry. The model is derived from the study:
+    This function uses a polynomial model to estimate the magnitude error for Gaia photometry. The model is from:
     https://www.aanda.org/articles/aa/pdf/2021/08/aa40735-21.pdf
 
     """
