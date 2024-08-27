@@ -7,7 +7,7 @@ Vogon gathers, homogenises and serves public photometry to the user for a given 
 Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to solving detective work.
 
 
-## Installation
+# Installation
 
 You can install `vogon` from source:
 
@@ -22,7 +22,7 @@ or from pip
 pip install vogon
 ```
 
-## Necessary Setup Steps (one time)
+# Necessary Setup Steps (one time)
 
 Step 1. 
 
