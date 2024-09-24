@@ -72,6 +72,6 @@ discoverer = tns_info['discoverer']
 ```
 
 
-# Another Example:
+# Photometry Search Example:
 
 ![screenshot](voogn_example.jpg)
