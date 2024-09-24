@@ -2,9 +2,10 @@
 
 Vogon gathers, homogenises and serves public photometry to the user for a given transient source. This is a tool born out of frustration and aims to simplify the most excessively complicated administrative procedure in transient astronomy. The data returned should be regarded as quicklook only and are not intended to be publication ready. The goal is to quickly inform users of publicly available measurements and limits to enable decison making in time domain astronomy. 
 
-## Vogon gathers data from ATLAS, ZTF via Lasair, GAIA, TESS, and NEOWISE. Suggestions to include other surveys or sources of information are strongly encouraged.
+## Vogon gathers data from ATLAS, ZTF via Lasair, GAIA, TESS, and NEOWISE. 
+### Suggestions to include other surveys or sources of information are strongly encouraged.
 
-Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to solving detective work.
+Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to detective work.
 
 
 # Installation
