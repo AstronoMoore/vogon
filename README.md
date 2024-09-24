@@ -25,7 +25,7 @@ pip install vogon
 
 # Necessary Setup Steps (one time)
 
-Step 1. 
+## Step 1. 
 
 Run the python code:
 
@@ -40,9 +40,9 @@ You will then be prompted to provide a directory e.g. ~/vogon_settings
 
 You will not need to run this step again
 
-Step 2.
+##Step 2.
 
-## Please then navigate to the setings file and add your TNS and Lasiar credentials.
+### Please then navigate to the setings file and add your TNS and Lasiar credentials.
 
 You will need to make a TNS bot which is straightforward (login to TNS and navigate to the bot page and add bot)
 
