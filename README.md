@@ -2,9 +2,10 @@
 
 Vogon gathers, homogenises and serves public photometry to the user for a given transient source. This is a tool born out of frustration and aims to simplify the most excessively complicated administrative procedure in transient astronomy. The data returned should be regarded as quicklook only and are not intended to be publication ready. The goal is to quickly inform users of publicly available measurements and limits to enable decison making in time domain astronomy. 
 
-## Vogon gathers data from ATLAS, ZTF via Lasair, GAIA, TESS, and NEOWISE. Suggestions to include other surveys or sources of information are strongly encouraged.
+## Vogon gathers data from ATLAS, ZTF via Lasair, GAIA, TESS, and NEOWISE. 
+### Suggestions to include other surveys or sources of information are strongly encouraged.
 
-Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to solving detective work.
+Mixing fandoms but the quote “It is a capital mistake to theorize before one has data.” by Sir Arthur Conan Doyle writing for Sherlock Holmes applies to transient astronomy as it does to detective work.
 
 
 # Installation
@@ -24,7 +25,7 @@ pip install vogon
 
 # Necessary Setup Steps (one time)
 
-Step 1. 
+## Step 1. 
 
 Run the python code:
 
@@ -39,9 +40,9 @@ You will then be prompted to provide a directory e.g. ~/vogon_settings
 
 You will not need to run this step again
 
-Step 2.
+##Step 2.
 
-## Please then navigate to the setings file and add your TNS and Lasiar credentials.
+### Please then navigate to the setings file and add your TNS and Lasiar credentials.
 
 You will need to make a TNS bot which is straightforward (login to TNS and navigate to the bot page and add bot)
 
@@ -71,6 +72,6 @@ discoverer = tns_info['discoverer']
 ```
 
 
-# Another Example:
+# Photometry Search Example:
 
 ![screenshot](voogn_example.jpg)
