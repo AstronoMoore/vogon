@@ -33,7 +33,7 @@ def create_settings_template():
 
     settings_path = get_settings_file_path()
 
-    content = """\
+    content = """
     # Settings.ini file version=0.1
 
     # Here we will specify some required tokens, usernames and passwords
@@ -56,6 +56,7 @@ def create_settings_template():
 
     [output] ; please specify an output directory
     output_dir =
+    plot = True
 
     [default] ; by default vogon returns data from 50 days before discovery and to 500 days after discovery. By setting alltime to True the data will be returned for alltime 
     alltime = False
@@ -199,11 +200,31 @@ def get_LASAIR_TOKEN():
     config.read(get_settings_file_path())
     return config['API_TOKENS']['LASAIR_TOKEN']
 
+
+
 def tns_lookup(tnsname: str) -> dict:
     """
     Lookup TNS information for the given object name and cache the result.
     """
+    config = configparser.ConfigParser()
+    config.read(get_settings_file_path())
+    output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
+    os.makedirs(output_dir, exist_ok=True)
+    cache_path = os.path.join(output_dir, 'tns_info.json')
+
+    with open(cache_path, 'r') as file:
+        data = file.read().strip().splitlines()
+        # This assumes each line contains a valid JSON object
+        json_objects_data = [json.loads(line) for line in data if line]
+        
+    def find_json_object_by_name(json_objects, name):
+        for obj in json_objects:
+            if 'objname' in obj and obj['objname'] == name:  # Check if 'objname' exists before comparing
+                return obj
+        return None
+
     try:
+
         # Load API key
         api_key = get_TNS_api_key()
         if not api_key:
@@ -215,7 +236,7 @@ def tns_lookup(tnsname: str) -> dict:
         config.read(get_settings_file_path())
         try:
             tns_id = config['TNS_API']['tns_id']
-            type = config['TNS_API']['type']
+            tns_type = config['TNS_API']['type']
             name = config['TNS_API']['name']
         except KeyError as e:
             print(f"Missing configuration key: {e}")
@@ -231,18 +252,24 @@ def tns_lookup(tnsname: str) -> dict:
                 "spectra": "1"
             })
         }
-        tns_agent = f'tns_marker{{"tns_id":{tns_id},"account_type":"{type}","name":"{name}"}}'
+        tns_agent = f'tns_marker{{"tns_id":{tns_id},"type":"{tns_type}","name":"{name}"}}'
+        # tns_agent = r'tns_marker{"tns_id":165250,"type": "bot", "name":"MARVIN"}'
+
         response = requests.post(TNS_API_URL, data=data, headers={'User-Agent': tns_agent})
         response.raise_for_status()
 
         # Ensure response is a dictionary
         response_data = response.json()
+
+        # return(response_data)
+
         if not isinstance(response_data, dict):
             print("Unexpected response format")
             return None
 
         # Extract object info
-        tns_object_info = response_data.get('data', {}).get('reply', {})
+        tns_object_info = response_data.get('data', {})
+
         if not isinstance(tns_object_info, dict):
             print("Unexpected format in response data")
             return None
@@ -279,7 +306,12 @@ def tns_lookup(tnsname: str) -> dict:
 
     except Exception as e:
         print(f"Fetching TNS info caused an error: {e}")
+        print(f"Trying to use cached TNS information")
+        if find_json_object_by_name(json_objects_data,tnsname) != None:
+            print(find_json_object_by_name(json_objects_data,tnsname))
+            return find_json_object_by_name(json_objects_data,tnsname)
         return None
+
 
 def fetch_ztf(ztf_name):
     L = lasair(get_LASAIR_TOKEN(), endpoint = "https://lasair-ztf.lsst.ac.uk/api")
@@ -674,8 +706,12 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
             color = band_color_index.get(filter, 'rgba(0,0,0,1)')
             marker_shape = 'circle' 
 
-            # Plot circular markers for regular data points
-            regular_data = filtered_data[filtered_data['limit'] != True]
+            # Markers for regular data points
+
+            if 'limit' in filtered_data: 
+                regular_data = filtered_data[filtered_data['limit'] != True]
+            else:
+                regular_data = filtered_data.cop()
             if not regular_data.empty:
                 trace = go.Scatter(
                     x=regular_data['time'],
@@ -695,7 +731,8 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
                 )
                 traces.append(trace)
 
-            limit_data = filtered_data[filtered_data['limit'] == True]
+            if 'limit' in filtered_data:
+                limit_data = filtered_data[filtered_data['limit'] == True]
             if not limit_data.empty:
                 limit_trace = go.Scatter(
                     x=limit_data['time'],
@@ -740,6 +777,7 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
 def search(tnsname):
     check_output_dir()
     TNS_info = tns_lookup(tnsname)
+
     surveys = identify_surveys(TNS_info)
 
     # reading defaults from settings.ini
@@ -792,16 +830,22 @@ def search(tnsname):
 
     output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
 
+
     subdirectory_plots= os.path.join(output_dir, 'plots')
     subdirectory_data= os.path.join(output_dir, 'data')
+    print(subdirectory_plots)
+    plot_bool = config.get('output', 'plot', fallback=True)
 
     fig = plot_vogon(TNS_info, combined_data)
     fig.write_html(subdirectory_plots+'/'+tnsname+'.html')
     fig.write_image(subdirectory_plots+'/'+tnsname+'.pdf')
 
+    if plot_bool == True:
+        fig = plot_vogon(TNS_info, combined_data)
+        fig.write_html(subdirectory_plots+'/'+tnsname+'.html')
+        fig.write_image(subdirectory_plots+'/'+tnsname+'.pdf')
 
     combined_data.to_csv(subdirectory_data+'/'+tnsname+'.csv', index = False)
-
 
     return combined_data
 

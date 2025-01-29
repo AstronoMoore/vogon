@@ -4,6 +4,7 @@ License.txt
 README.md
 setup.cfg
 setup.py
+voogn_example.jpg
 .eggs/README.txt
 .eggs/setuptools_scm-8.1.0-py3.11.egg/EGG-INFO/LICENSE
 .eggs/setuptools_scm-8.1.0-py3.11.egg/EGG-INFO/PKG-INFO
@@ -132,6 +133,8 @@ dist/vogon-0.1.3.1.tar.gz
 dist/vogon-0.1.3.2-py3-none-any.whl
 dist/vogon-0.1.3.2.tar.gz
 dist/vogon-0.1.3.tar.gz
+dist/vogon-0.1.4-py3-none-any.whl
+dist/vogon-0.1.4.tar.gz
 vogon/.DS_Store
 vogon/__init__.py
 vogon/config.py
