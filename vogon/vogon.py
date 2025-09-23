@@ -305,12 +305,12 @@ def tns_lookup(tnsname: str) -> dict:
         return tns_object_info
 
     except Exception as e:
-        print(f"Fetching TNS info caused an error: {e}")
-        print(f"Trying to use cached TNS information")
-        if find_json_object_by_name(json_objects_data,tnsname) != None:
-            print(find_json_object_by_name(json_objects_data,tnsname))
-            return find_json_object_by_name(json_objects_data,tnsname)
-        return None
+        # print(f"Fetching TNS info caused an error: {e}")
+        # print(f"Trying to use cached TNS information")
+        # if find_json_object_by_name(json_objects_data,tnsname) != None:
+        #     print(find_json_object_by_name(json_objects_data,tnsname))
+        #     return find_json_object_by_name(json_objects_data,tnsname)
+        return e
 
 
 def fetch_ztf(ztf_name):
@@ -339,7 +339,7 @@ def fetch_ztf(ztf_name):
         # process and format
         data = pd.DataFrame(lcs_dict[obj['objectId']]['candidates'])
         data = data[data['isdiffpos']=='t']
-        data_ouput = data.filter(['mjd','fid','magpsf','sigmapsf'])
+        data_ouput = data.filter(['mjd','fid','magpsf','sigmapsf','limit'])
         # Adding filter information
         replacement_values = {1: 'g', 2: 'r'}
         data_ouput['fid'] = data_ouput['fid'].replace(replacement_values)
@@ -348,6 +348,8 @@ def fetch_ztf(ztf_name):
         data_ouput = data_ouput.rename(columns={"magpsf": "magnitude"})
         data_ouput = data_ouput.rename(columns={"sigmapsf": "e_magnitude"})
         data_ouput = data_ouput.rename(columns={"mjd": "time"})
+        data_ouput = data_ouput.rename(columns={"limit": "upperlimit"})
+
 
         return data_ouput
 
@@ -402,7 +404,6 @@ def gaia_e_mag(g_mag):
                     (g_mag / c4)**4)
         
     return e_mag
-
 
 def fetch_gaia(gaia_name):
     """
@@ -707,11 +708,13 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
             marker_shape = 'circle' 
 
             # Markers for regular data points
+            if 'upperlimit' in filtered_data:
+                filtered_data = filtered_data.rename(columns={"upperlimit": "limit"})
 
             if 'limit' in filtered_data: 
                 regular_data = filtered_data[filtered_data['limit'] != True]
             else:
-                regular_data = filtered_data.cop()
+                regular_data = filtered_data.copy()
             if not regular_data.empty:
                 trace = go.Scatter(
                     x=regular_data['time'],
@@ -733,24 +736,24 @@ def plot_vogon(tns_info, data, save_path_html=None, save_path_img=None):
 
             if 'limit' in filtered_data:
                 limit_data = filtered_data[filtered_data['limit'] == True]
-            if not limit_data.empty:
-                limit_trace = go.Scatter(
-                    x=limit_data['time'],
-                    y=limit_data['magnitude'],
-                    mode='markers',
-                    marker=dict(
-                        symbol='arrow-down',  # Downward-pointing arrow
-                        size=12,
-                        color='rgba(0,0,0,0)',  # Transparent fill
-                        line=dict(
-                            color=color,  # Edge color
-                            width=2                # Edge width
-                        )
-                    ),
-                    name=f'{telescope} - {filter} (Limit)',
-                    error_y=None  # No error bars for limit points
-                )
-                traces.append(limit_trace)
+                if not limit_data.empty:
+                    limit_trace = go.Scatter(
+                        x=limit_data['time'],
+                        y=limit_data['magnitude'],
+                        mode='markers',
+                        marker=dict(
+                            symbol='arrow-down',  # Downward-pointing arrow
+                            size=12,
+                            color='rgba(0,0,0,0)',  # Transparent fill
+                            line=dict(
+                                color=color,  # Edge color
+                                width=2                # Edge width
+                            )
+                        ),
+                        name=f'{telescope} - {filter} (Limit)',
+                        error_y=None  # No error bars for limit points
+                    )
+                    traces.append(limit_trace)
 
     # Create the figure
     fig = go.Figure(data=traces)
@@ -797,7 +800,6 @@ def search(tnsname):
     
     alltime = config['default']['alltime']
 
-
     print(f'{tnsname} was observed by {surveys}')
 
     The_Book = [] # the book is a silly reference to HHGTTG that I decided to stick with :) 
@@ -807,6 +809,7 @@ def search(tnsname):
     
     if 'ZTF' in surveys: 
         The_Book.append(fetch_ztf(surveys['ZTF']))
+        print(fetch_ztf(surveys['ZTF']))
 
     if 'ZTF' not in surveys:
         print('Attempting a ZTF conesearch at the location with a radius of 0.1 arcsec')
