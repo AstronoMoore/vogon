@@ -22,6 +22,7 @@ setup(
         'requests', 
         'plotly',
         'nbformat>=4.2.0',
-        'kaleido'
+        'kaleido',
+        'configargparse'
     ],
 )

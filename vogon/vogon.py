@@ -211,6 +211,11 @@ def tns_lookup(tnsname: str) -> dict:
     output_dir = config.get('output', 'OUTPUT_DIR', fallback='')
     os.makedirs(output_dir, exist_ok=True)
     cache_path = os.path.join(output_dir, 'tns_info.json')
+    
+    if not os.path.exists(cache_path):
+        with open(cache_path, 'w') as f:
+            f.write("")
+        print(f"File '{cache_path}' created.")
 
     with open(cache_path, 'r') as file:
         data = file.read().strip().splitlines()
@@ -815,7 +820,12 @@ def search(tnsname):
         print('Attempting a ZTF conesearch at the location with a radius of 0.1 arcsec')
         The_Book.append(fetch_ztf_cone(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],0.1))
 
-    The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime,ATLAS_difference))
+    tns_discovery_date = Time(TNS_info['discoverydate']).mjd.item()
+    
+    if tns_discovery_date < 57388: 
+        print('Transient exploded long before ATLAS started observing.')
+    else: 
+        The_Book.append(fetch_atlas(TNS_info[['radeg'][0]],TNS_info[['decdeg'][0]],tnsname, alltime,ATLAS_difference))
 
     The_Book.append(fetch_neowise(TNS_info[['radeg'][0]], TNS_info[['decdeg'][0]]))
 
